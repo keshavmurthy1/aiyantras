@@ -48,7 +48,7 @@ function parseContactDetails(value: unknown): ContactDetails | null {
   const phone = readText(value.phone, 50);
   const requirement = readText(value.requirement, 5000, true);
 
-  if (!name || !company || !role || !email || !phone || !requirement) return null;
+  if (!name || !company || !email || !requirement || role === null || phone === null) return null;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
 
   return { name, company, role, email, phone, requirement };
@@ -109,12 +109,21 @@ export default async function handler(request: ContactRequest, response: Contact
     });
 
     if (!result.ok) {
-      console.error('Resend rejected contact enquiry', result.status);
+      let providerError = 'No error details returned.';
+      try {
+        const details = await result.json() as { name?: unknown; message?: unknown };
+        if (typeof details.message === 'string') providerError = details.message;
+        if (typeof details.name === 'string') providerError = `${details.name}: ${providerError}`;
+      } catch {
+        providerError = 'Resend returned a non-JSON error response.';
+      }
+      console.error('Resend rejected contact enquiry', { status: result.status, error: providerError });
       return response.status(502).json({ error: 'We could not send your enquiry. Please try again or email us directly.' });
     }
 
     return response.status(200).json({ ok: true });
-  } catch {
+  } catch (error) {
+    console.error('Contact email request failed', error instanceof Error ? error.message : 'Unknown network error.');
     return response.status(502).json({ error: 'We could not send your enquiry. Please try again or email us directly.' });
   }
 }
