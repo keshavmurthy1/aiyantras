@@ -537,16 +537,55 @@ function ContactPage() {
 
 function LeadForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', company: '', role: '', email: '', phone: '', requirement: '' });
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const subject = encodeURIComponent(`Aiyantras Automation Assessment — ${form.company || form.name}`);
-    const body = encodeURIComponent(`Name: ${form.name}\nCompany: ${form.company}\nRole: ${form.role}\nEmail: ${form.email}\nPhone: ${form.phone}\n\nRequirement:\n${form.requirement}`);
-    window.location.href = `mailto:${COMPANY.email}?subject=${subject}&body=${body}`;
-    setSubmitted(true);
+    setSending(true);
+    setError('');
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, website: String(formData.get('website') ?? '') }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => null) as { error?: unknown } | null;
+        if (response.status === 404) {
+          throw new Error('The enquiry API is unavailable on this local server. Run `npx vercel dev` to test it here.');
+        }
+        if (typeof result?.error === 'string') throw new Error(result.error);
+        throw new Error('We could not send your enquiry. Please try again, or email us directly.');
+      }
+      setSubmitted(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'We could not send your enquiry. Please try again, or email us directly.');
+    } finally {
+      setSending(false);
+    }
   };
-  if (submitted) return <div className="success-card"><div className="success-icon"><Icon name="check" size={28} /></div><h2>Thank you.</h2><p>Your email client has been prepared with the project details. Send the message and the Aiyantras team can take it forward.</p><button className="btn btn-secondary" onClick={() => setSubmitted(false)}>Send another enquiry</button></div>;
-  return <form className="lead-form" onSubmit={onSubmit}><div className="form-head"><span className="card-eyebrow">START A CONVERSATION</span><h2>Tell us about the process.</h2><p>Share the essentials. We will take the conversation from there.</p></div><div className="form-grid"><label>Name<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Your name" /></label><label>Company<input required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="Company name" /></label><label>Role<input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Plant / Engineering / Procurement" /></label><label>Email<input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@company.com" /></label><label>Phone<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91" /></label><label className="full">Requirement<textarea required value={form.requirement} onChange={(e) => setForm({ ...form, requirement: e.target.value })} rows={6} placeholder="Describe the part, process, volume or bottleneck..." /></label></div><button className="btn btn-primary btn-full" type="submit">Prepare enquiry email <Icon name="arrow" size={17} /></button><small className="form-foot">Or email us directly at <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</small></form>;
+  if (submitted) return <div className="success-card" role="status" aria-live="polite"><div className="success-icon"><Icon name="check" size={28} /></div><h2>Thank you.</h2><p>Your enquiry has been submitted to the Aiyantras team. We will follow up using the contact details you provided.</p><button className="btn btn-secondary" onClick={() => { setSubmitted(false); setError(''); setForm({ name: '', company: '', role: '', email: '', phone: '', requirement: '' }); }}>Send another enquiry</button></div>;
+  return <form className="lead-form" onSubmit={onSubmit} aria-busy={sending}>
+    <div className="form-head"><span className="card-eyebrow">START A CONVERSATION</span><h2>Tell us about the process.</h2><p>Share the essentials. We will take the conversation from there.</p></div>
+    <div className="form-grid">
+      <label>Name<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Your name" /></label>
+      <label>Company<input required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="Company name" /></label>
+      <label>Role<input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Plant / Engineering / Procurement" /></label>
+      <label>Email<input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@company.com" /></label>
+      <label>Phone<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91" /></label>
+      <label className="full">Requirement<textarea required value={form.requirement} onChange={(e) => setForm({ ...form, requirement: e.target.value })} rows={6} placeholder="Describe the part, process, volume or bottleneck..." /></label>
+    </div>
+    <label className="form-honeypot" aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label>
+    <div className="form-actions">
+      {error && <p className="form-status" role="alert">{error}</p>}
+      <button className="btn btn-primary form-submit" type="submit" disabled={sending}>{sending ? 'Sending enquiry…' : 'Send enquiry'} {!sending && <Icon name="arrow" size={17} />}</button>
+      <small className="form-foot">Or email us directly at <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</small>
+    </div>
+  </form>;
 }
 
 function MachineVisual() {
