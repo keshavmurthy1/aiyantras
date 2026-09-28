@@ -1,677 +1,607 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from 'react';
 
-type NavItem = {
-  label: string;
-  href: string;
+type IconName =
+  | 'arrow'
+  | 'assembly'
+  | 'check'
+  | 'chevron'
+  | 'close'
+  | 'cnc'
+  | 'document'
+  | 'eye'
+  | 'factory'
+  | 'gear'
+  | 'menu'
+  | 'network'
+  | 'plug'
+  | 'robot'
+  | 'shield'
+  | 'target'
+  | 'test'
+  | 'tools'
+  | 'truck';
+
+type RouteKey = 'home' | 'solutions' | 'industries' | 'case-study' | 'about' | 'assessment' | 'contact';
+
+const COMPANY = {
+  name: 'Aiyantras Automation',
+  email: 'info@aiyantras.com',
+  phone: '+91 90369 29191',
+  location: 'Konanakunte, Bangalore, Karnataka, India',
 };
 
-const NAV_ITEMS: NavItem[] = [
-  { label: "Home", href: "#home" },
-  { label: "About", href: "#about" },
-  { label: "Solutions", href: "#solutions" },
-  { label: "Industries", href: "#industries" },
-  { label: "Capabilities", href: "#capabilities" },
-  { label: "Process", href: "#process" },
-  { label: "Why Choose Us", href: "#why" },
-  { label: "Case Studies", href: "#cases" },
-  { label: "Contact", href: "#contact" },
+const routeMap: Record<string, RouteKey> = {
+  '/': 'home',
+  '/home': 'home',
+  '/solutions': 'solutions',
+  '/industries': 'industries',
+  '/case-studies/hical-technologies': 'case-study',
+  '/case-study/hical-technologies': 'case-study',
+  '/about': 'about',
+  '/automation-assessment': 'assessment',
+  '/contact': 'contact',
+};
+
+const solutionCards = [
+  {
+    icon: 'gear' as IconName,
+    eyebrow: 'SPM',
+    title: 'Special Purpose Machines',
+    body: 'Custom drilling, tapping, reaming, chamfering and multi-station machines engineered around your part and cycle-time targets.',
+    link: '/solutions#spm',
+  },
+  {
+    icon: 'assembly' as IconName,
+    eyebrow: 'ASSEMBLY',
+    title: 'Assembly Automation',
+    body: 'Press-fit, fastening, dispensing, torquing, transfer and error-proofed assembly cells for repeatable production.',
+    link: '/solutions#assembly',
+  },
+  {
+    icon: 'test' as IconName,
+    eyebrow: 'QUALITY',
+    title: 'Testing & Inspection',
+    body: 'Functional, leak, continuity, vision and end-of-line test systems with traceability and data capture.',
+    link: '/solutions#testing',
+  },
+  {
+    icon: 'cnc' as IconName,
+    eyebrow: 'RETROFIT',
+    title: 'CNC Automation & Retrofit',
+    body: 'Legacy machine control upgrades, sensor integration, cycle improvements, SCADA dashboards and handling automation.',
+    link: '/solutions#retrofit',
+  },
+  {
+    icon: 'robot' as IconName,
+    eyebrow: 'ROBOTICS',
+    title: 'Robotics & Material Handling',
+    body: 'Robot integration, EOAT, pick-and-place, conveyors, feeders and safe machine-to-machine material flow.',
+    link: '/solutions#robotics',
+  },
+  {
+    icon: 'tools' as IconName,
+    eyebrow: 'TOOLING',
+    title: 'Jigs, Fixtures & Tooling',
+    body: 'Precision fixtures and poka-yoke systems designed for stable part location, repeatability and operator-friendly use.',
+    link: '/solutions#tooling',
+  },
 ];
 
-const App: React.FC = () => {
+const industryCards = [
+  {
+    icon: 'factory' as IconName,
+    title: 'Automotive & Auto Components',
+    slug: 'automotive',
+    body: 'Assembly, pressing, machining support, inspection and testing for repeatable high-volume production.',
+    accent: 'blue',
+  },
+  {
+    icon: 'shield' as IconName,
+    title: 'Aerospace & Defence',
+    slug: 'aerospace-defence',
+    body: 'Precision assembly, inspection, fixtures, testing, traceability and production tooling.',
+    accent: 'violet',
+  },
+  {
+    icon: 'plug' as IconName,
+    title: 'Electronics & Electrical',
+    slug: 'electronics',
+    body: 'Connector handling, fastening, dispensing, functional testing and vision inspection.',
+    accent: 'cyan',
+  },
+  {
+    icon: 'target' as IconName,
+    title: 'Medical Devices',
+    slug: 'medical-devices',
+    body: 'Repeatable precision assembly, inspection, testing and traceability for controlled processes.',
+    accent: 'green',
+  },
+  {
+    icon: 'gear' as IconName,
+    title: 'General Engineering',
+    slug: 'general-engineering',
+    body: 'Custom automation for machine shops, precision engineering, industrial equipment and component manufacturers.',
+    accent: 'orange',
+  },
+];
+
+const processSteps = [
+  { num: '01', title: 'Understand', body: 'Part, process, volumes, quality issues and production targets.', output: 'Requirements aligned' },
+  { num: '02', title: 'Concept', body: 'Feasibility, process flow, station architecture and automation level.', output: 'Concept reviewed' },
+  { num: '03', title: 'Engineer', body: 'Mechanical, electrical, pneumatic, PLC/HMI, safety and controls.', output: 'Design aligned' },
+  { num: '04', title: 'Build & Validate', body: 'Manufacturing, assembly, dry runs, trials and capability validation.', output: 'Trials reviewed' },
+  { num: '05', title: 'Commission', body: 'Installation, operator training, documentation and lifecycle support.', output: 'Handover ready' },
+];
+
+const capabilityRows = [
+  ['Mechanical design', '3D CAD, mechanisms, fixtures, DFM and detailed machine engineering.'],
+  ['Controls', 'PLC, HMI, sensors, safety circuits, sequencing and machine interfaces.'],
+  ['Pneumatic / hydraulic', 'Actuation, pressure control, sequencing, force applications and serviceability.'],
+  ['Vision / inspection', 'Camera-based inspection, presence checks, dimensional checks and defect detection.'],
+  ['Robotics', 'Robot selection, EOAT, path planning and safe cell integration.'],
+  ['Testing & traceability', 'Functional tests, leak / continuity testing, result logging and traceability.'],
+];
+
+function Icon({ name, size = 24, stroke = 1.8 }: { name: IconName; size?: number; stroke?: number }) {
+  const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: stroke, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
+  switch (name) {
+    case 'arrow':
+      return <svg {...common}><path d="M5 12h13" /><path d="m13 6 6 6-6 6" /></svg>;
+    case 'assembly':
+      return <svg {...common}><path d="M8 4h8v4H8z" /><path d="M6 8h12v4H6z" /><path d="M9 12v6" /><path d="M15 12v6" /><path d="M5 20h14" /></svg>;
+    case 'check':
+      return <svg {...common}><path d="m5 12 4 4L19 6" /></svg>;
+    case 'chevron':
+      return <svg {...common}><path d="m9 18 6-6-6-6" /></svg>;
+    case 'close':
+      return <svg {...common}><path d="M6 6l12 12M18 6 6 18" /></svg>;
+    case 'cnc':
+      return <svg {...common}><path d="M4 6h16v12H4z" /><path d="M7 9h5M7 12h3M15 9h2M15 12h2" /><circle cx="18" cy="16" r="1.2" /></svg>;
+    case 'document':
+      return <svg {...common}><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h4M10 12h5M10 16h5" /></svg>;
+    case 'eye':
+      return <svg {...common}><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></svg>;
+    case 'factory':
+      return <svg {...common}><path d="M4 20V8l6 3V8l6 3V6h4v14z" /><path d="M8 20v-4h3v4M14 20v-4h3v4" /><path d="M6 13h1M10 13h1M14 13h1M18 10h1" /></svg>;
+    case 'gear':
+      return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="m19.4 15 .1.1a2 2 0 0 1-2.8 2.8l-.1-.1a2 2 0 0 0-3.4 1.4v.2a2 2 0 0 1-4 0v-.2A2 2 0 0 0 5.8 17.8l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A2 2 0 0 0 1.6 12a2 2 0 0 1 2-2h.2a2 2 0 0 0 1.4-3.4l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A2 2 0 0 0 11.4 2h.2a2 2 0 0 1 2 2v.2A2 2 0 0 0 17 5.6l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A2 2 0 0 0 21.2 12h.2a2 2 0 0 1-2 2h-.2a2 2 0 0 0-1.8 1Z" /></svg>;
+    case 'menu':
+      return <svg {...common}><path d="M4 7h16M4 12h16M4 17h16" /></svg>;
+    case 'network':
+      return <svg {...common}><rect x="4" y="4" width="5" height="5" rx="1" /><rect x="15" y="4" width="5" height="5" rx="1" /><rect x="9.5" y="15" width="5" height="5" rx="1" /><path d="M9 6.5h6M7 9v3h5M17 9v3h-5" /></svg>;
+    case 'plug':
+      return <svg {...common}><path d="M9 7v5M15 7v5" /><path d="M6 7h12" /><path d="M8 12a4 4 0 0 0 8 0" /><path d="M12 16v5" /></svg>;
+    case 'robot':
+      return <svg {...common}><rect x="7" y="7" width="10" height="9" rx="2" /><path d="M12 4v3M9.5 11h.01M14.5 11h.01M10 16v3M14 16v3" /><path d="M4 10h3M17 10h3" /><circle cx="12" cy="4" r="1" /></svg>;
+    case 'shield':
+      return <svg {...common}><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6z" /><path d="m8.5 12 2.2 2.2 4.8-5" /></svg>;
+    case 'target':
+      return <svg {...common}><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" /></svg>;
+    case 'test':
+      return <svg {...common}><path d="M9 3h6M10 3v6l-4.2 7.5A2 2 0 0 0 7.5 20h9a2 2 0 0 0 1.7-3.5L14 9V3" /><path d="M8 14h8" /></svg>;
+    case 'tools':
+      return <svg {...common}><path d="m14.5 6.5 3-3 3 3-3 3z" /><path d="M18.3 8.3 11 15.6a2.5 2.5 0 0 1-3.5 0l-.1-.1a2.5 2.5 0 0 1 0-3.5l7.3-7.3" /><path d="m5 18 2 2" /></svg>;
+    case 'truck':
+      return <svg {...common}><path d="M3 6h11v10H3z" /><path d="M14 10h4l3 3v3h-7z" /><circle cx="7" cy="18" r="2" /><circle cx="17" cy="18" r="2" /></svg>;
+    default:
+      return null;
+  }
+}
+
+function getRoute(): { key: RouteKey; hash: string } {
+  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  const key = routeMap[path] || 'home';
+  return { key, hash: window.location.hash };
+}
+
+function navigate(to: string) {
+  const [path, hash] = to.split('#');
+  window.history.pushState({}, '', `${path || '/'}${hash ? `#${hash}` : ''}`);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function App() {
+  const [{ key, hash }, setRoute] = useState(getRoute);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handle = () => setRoute(getRoute());
+    window.addEventListener('popstate', handle);
+    return () => window.removeEventListener('popstate', handle);
+  }, []);
+
+  useEffect(() => {
+    const titles: Record<RouteKey, string> = {
+      home: 'Aiyantras Automation | Custom SPM & Industrial Automation in Bangalore',
+      solutions: 'SPM & Industrial Automation Solutions | Aiyantras Automation',
+      industries: 'Manufacturing Automation for Automotive, Aerospace & More | Aiyantras',
+      'case-study': 'Hical Technologies Automation Project | Aiyantras Automation',
+      about: 'About Aiyantras Automation | Engineering & Machine Design',
+      assessment: 'Factory Automation Assessment | Aiyantras Automation',
+      contact: 'Contact Aiyantras Automation | Bangalore',
+    };
+    document.title = titles[key];
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'Aiyantras Automation designs and builds custom Special Purpose Machines, assembly automation, testing, inspection, robotics and machine retrofit solutions for manufacturers in Bangalore and across India.');
+    }
+  }, [key]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    if (hash) {
+      requestAnimationFrame(() => document.getElementById(hash.replace('#', ''))?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, [key, hash]);
+
+  const nav = [
+    ['/solutions', 'Solutions'],
+    ['/industries', 'Industries'],
+    ['/case-studies/hical-technologies', 'Case Study'],
+    ['/about', 'Engineering'],
+  ];
+
   return (
-    <div className="page">
-      <Header />
+    <div className="site-shell">
+      <div className="announcement">
+        <div className="container announcement-inner">
+          <span><span className="dot-live" /> Bangalore-based custom machine design & automation</span>
+          <button onClick={() => navigate('/automation-assessment')} className="announcement-link">Request an automation assessment <Icon name="arrow" size={15} /></button>
+        </div>
+      </div>
+      <Header nav={nav} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <main>
-        <Hero />
-        <About />
-        <Solutions /> .
-        <Industries />
-        <Capabilities />
-        <Process />
-        <WhyChooseUs />
-        <CaseStudies />
-        <Contact />
+        {key === 'home' && <Home />}
+        {key === 'solutions' && <SolutionsPage />}
+        {key === 'industries' && <IndustriesPage />}
+        {key === 'case-study' && <HicalCaseStudy />}
+        {key === 'about' && <EngineeringPage />}
+        {key === 'assessment' && <AssessmentPage />}
+        {key === 'contact' && <ContactPage />}
       </main>
       <Footer />
     </div>
   );
-};
 
-const Header: React.FC = () => {
-  return (
-    <header className="header">
-      <div className="container header-inner">
-        <a href="#home" className="logo">
-          <span className="logo-mark">Ai</span>
-          <span className="logo-text">
-            AiYantras<span className="logo-dot"> Automation</span>
-          </span>
-        </a>
-        <nav className="nav">
-          {NAV_ITEMS.map((item) => (
-            <a key={item.href} href={item.href} className="nav-link">
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </div>
-    </header>
-  );
-};
-
-const Hero: React.FC = () => {
-  return (
-    <section id="home" className="section hero">
-      <div className="container hero-grid">
-        <div className="hero-text">
-          <p className="hero-eyebrow">Special Purpose Machine Design</p>
-          <h1 className="hero-title">
-            Intelligent Special Purpose Machines
-            <span className="hero-highlight"> for modern manufacturing.</span>
-          </h1>
-          <p className="hero-subtitle">
-            AiYantras designs and builds custom special purpose machines (SPMs)
-            for drilling, tapping, assembly, testing and inspection – tailored
-            to your components, cycle time, and quality requirements.
-          </p>
-          <div className="hero-actions">
-            <a href="#contact" className="btn btn-primary">
-              Request a discussion
-            </a>
-            <a href="#solutions" className="btn btn-ghost">
-              Explore solutions
-            </a>
+  function Header({ nav, menuOpen, setMenuOpen }: { nav: string[][]; menuOpen: boolean; setMenuOpen: (open: boolean) => void }) {
+    return (
+      <header className="site-header">
+        <div className="container header-row">
+          <button className="brand" onClick={() => navigate('/')} aria-label="Aiyantras home">
+            <img src="/logo.png" alt="Aiyantras" className="brand-logo" />
+            <span className="brand-copy">
+              <strong>AIYANTRAS</strong>
+              <span>AUTOMATION</span>
+            </span>
+          </button>
+          <nav className={`desktop-nav ${menuOpen ? 'mobile-open' : ''}`} aria-label="Primary">
+            <button onClick={() => navigate('/')} className="nav-link">Home</button>
+            {nav.map(([path, label]) => (
+              <button key={path} onClick={() => navigate(path)} className="nav-link">{label}</button>
+            ))}
+            <button onClick={() => navigate('/contact')} className="nav-link">Contact</button>
+            <button onClick={() => navigate('/automation-assessment')} className="btn btn-small btn-primary">Get an assessment <Icon name="arrow" size={16} /></button>
+          </nav>
+          <button className="mobile-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">
+            <Icon name={menuOpen ? 'close' : 'menu'} size={22} />
+          </button>
+        </div>
+        {menuOpen && (
+          <div className="mobile-nav-panel">
+            <button onClick={() => navigate('/')} className="mobile-nav-link">Home</button>
+            {nav.map(([path, label]) => <button key={path} onClick={() => navigate(path)} className="mobile-nav-link">{label}</button>)}
+            <button onClick={() => navigate('/contact')} className="mobile-nav-link">Contact</button>
+            <button onClick={() => navigate('/automation-assessment')} className="btn btn-primary mobile-cta">Request automation assessment <Icon name="arrow" size={17} /></button>
           </div>
-          <div className="hero-meta">
-            <div>
-              <span className="hero-meta-number">10+</span>
-              <span className="hero-meta-label">Application areas</span>
+        )}
+      </header>
+    );
+  }
+}
+
+function Home() {
+  return (
+    <>
+      <section className="hero section-grid-bg">
+        <div className="container hero-grid">
+          <div className="hero-content">
+            <div className="eyebrow"><span className="eyebrow-line" /> CUSTOM MACHINE ENGINEERING</div>
+            <h1>Automation built around <span className="gradient-text">your production process.</span></h1>
+            <p className="hero-lead">Aiyantras designs and builds custom Special Purpose Machines and industrial automation for assembly, drilling, tapping, testing, inspection, material handling and machine retrofit applications.</p>
+            <div className="hero-actions">
+              <button onClick={() => navigate('/automation-assessment')} className="btn btn-primary btn-lg">Request automation assessment <Icon name="arrow" size={18} /></button>
+              <button onClick={() => navigate('/case-studies/hical-technologies')} className="btn btn-secondary btn-lg">View Hical project <Icon name="chevron" size={18} /></button>
             </div>
-            <div>
-              <span className="hero-meta-number">End-to-End</span>
-              <span className="hero-meta-label">Design to commissioning</span>
-            </div>
-            <div>
-              <span className="hero-meta-number">Industry 4.0</span>
-              <span className="hero-meta-label">Connected solutions</span>
+            <div className="trust-row">
+              <span><Icon name="check" size={16} /> Bangalore based</span>
+              <span><Icon name="check" size={16} /> End-to-end engineering</span>
+              <span><Icon name="check" size={16} /> Custom built</span>
             </div>
           </div>
+          <MachineVisual />
         </div>
-        <div className="hero-card">
-          <h2 className="hero-card-title">Why AiYantras?</h2>
-          <ul className="hero-card-list">
-            <li>Deliver innovative automation systems</li>
-            <li>
-              To deliver turnkey mechanical, electrical, and automation
-              solutions under one roof
-            </li>
-            <li>
-              To partner with industries in their journey toward smart and
-              automated manufacturing
-            </li>
-            <li>Custom SPMs for drilling, tapping, milling & assembly</li>
-            <li>Optimized for throughput, quality and operator safety</li>
-            <li>Structured design process and documentation</li>
-            <li>Lifecycle support – retrofit, upgrades & service</li>
-          </ul>
-          <p className="hero-card-note">
-            Inspired by proven global SPM, tooling and automation practices,
-            engineered for Indian manufacturing.
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-};
+      </section>
 
-const About: React.FC = () => {
-  return (
-    <section id="about" className="section">
-      <div className="container two-column">
-        <div>
-          <h2 className="section-title">About AiYantras</h2>
-          <p className="section-lead">
-            Aiyantras Automation is an innovative engineering company
-            specializing in the design and manufacturing of high-performance
-            industrial equipment, custom machinery, and Special Purpose Machines
-            (SPMs).
-          </p>
-          <p className="section-body">
-            We combine machine design, precision tooling knowledge and
-            industrial automation to deliver reliable, operator-friendly SPMs.
-            From drilling and tapping units inspired by global SPM manufacturers
-            to high-precision machining and assembly lines similar to those used
-            by leading cutting-tool and automation companies, our solutions are
-            built for demanding production environments.
-          </p>
-          <p className="section-body">
-            Our name blends AI and “Yantra” (machine), reflecting our focus on
-            smart machines – data-enabled, intuitive to operate, and ready for
-            Industry 4.0.
-          </p>
-          <p className="section-body">
-            We provide end-to-end automation solutions that enhance
-            productivity, precision, and operational efficiency for
-            manufacturing industries.
-          </p>
+      <section className="proof-strip">
+        <div className="container proof-grid">
+          <div className="proof-label">RECENTLY COMPLETED</div>
+          <div className="proof-main"><strong>Hical Technologies</strong><span>Custom automation project · Bangalore</span></div>
+          <button onClick={() => navigate('/case-studies/hical-technologies')} className="text-link">Explore case study <Icon name="arrow" size={16} /></button>
         </div>
-        <div className="card values-card" style={{ marginTop: "72px" }}>
-          <h3 className="card-title">Our core values</h3>
-          <ul className="pill-list">
-            <li>Integrity in every commitment</li>
-            <li>Respect for people & safety</li>
-            <li>Deep customer engagement</li>
-            <li>Obsession for excellence</li>
-            <li>Curiosity & continuous learning</li>
-          </ul>
-          <p className="card-note">
-            Inspired by world-class engineering organizations that thrive on
-            solving complex automation challenges.
-          </p>
+      </section>
+
+      <section className="section section-light" id="solutions-preview">
+        <div className="container">
+          <SectionIntro eyebrow="WHAT WE BUILD" title="From one bottleneck to a production-ready machine." text="Start with the process. We engineer the right level of automation around the component, cycle time, quality targets and operator workflow." />
+          <div className="solution-grid">
+            {solutionCards.map((item) => (
+              <article className="solution-card" key={item.title}>
+                <div className="icon-box"><Icon name={item.icon} size={23} /></div>
+                <span className="card-eyebrow">{item.eyebrow}</span>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+                <button onClick={() => navigate(item.link)} className="card-link">Explore <Icon name="arrow" size={15} /></button>
+              </article>
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
-  );
-};
+      </section>
 
-const Solutions: React.FC = () => {
-  const items = [
-    {
-      title: "Custom SPM Design & Manufacturing",
-      points: [
-        "Dedicated drilling, tapping, reaming and chamfering stations",
-        "Multi-spindle heads and programmable feed units",
-        "High repeatability for high-volume components",
-      ],
-    },
-    {
-      title: "Automated Assembly Lines & Cells (Assembly Automation 4.0)",
-      points: [
-        "Fully automatic and lean assembly cells for discrete parts",
-        "Press-fit, fastening, dispensing and torquing operations",
-        "Error-proofing (Poka-Yoke) and traceability built-in",
-      ],
-    },
-    {
-      title: "Robotics Integration",
-      points: [
-        "Robot selection, payload & reach optimisation for the task",
-        "End-of-arm tooling (EOAT) design for grippers, vacuum and custom tools",
-        "Robot safety integration: light curtains, fences and collaborative modes",
-        "Offline programming, cycle simulation and path optimisation",
-        "Flanged integration with conveyors, feeders and other automation assets",
-      ],
-    },
-    {
-      title: "Pneumatic & Hydraulic Automation",
-      points: [
-        "Custom valve manifolds, sequencing circuits and compact actuators",
-        "Proportional valve control, pressure regulation and flow tuning",
-        "Energy-efficient designs, leak management and maintenance accessibility",
-        "Integration of electro-pneumatic/hydraulic controls with PLC and HMI",
-        "High-force press solutions, cushioning and overload protection",
-      ],
-    },
-    {
-      title: "Testing & Inspection Systems",
-      points: [
-        "End-of-line functional testing of assemblies",
-        "Vision-based inspection for dimensions & cosmetic defects",
-        "Data logging, analytics and digital test reports",
-      ],
-    },
-    {
-      title: "Retrofit & Upgrades",
-      points: [
-        "Control upgrades for legacy SPMs and lines",
-        "Cycle-time and ergonomics improvements",
-        "Integration of sensors, SCADA and dashboards",
-      ],
-    },
-  ];
-
-  return (
-    <section id="solutions" className="section section-muted">
-      <div className="container">
-        <h2 className="section-title">Solutions we build</h2>
-        <p className="section-lead">
-          From standalone SPMs to complete assembly and test lines, we design
-          solutions around your part, process and productivity goals.
-        </p>
-        <div className="grid-2">
-          {items.map((item) => (
-            <div key={item.title} className="card card-solution">
-              <h3 className="card-title">{item.title}</h3>
-              <ul className="card-list">
-                {item.points.map((p) => (
-                  <li key={p}>{p}</li>
-                ))}
-              </ul>
+      <section className="section dark-section">
+        <div className="container split-grid">
+          <div>
+            <SectionIntro eyebrow="HOW WE THINK" title="Solve the production problem, not just the machine brief." text="Aiyantras combines mechanical design, controls, pneumatics, robotics and testing into one engineering workflow — so the finished machine works as a production asset, not a collection of components." light />
+            <div className="feature-list">
+              {['Cycle time & throughput', 'Quality & error proofing', 'Operator safety & ergonomics', 'Maintainability & documentation'].map((item) => <div className="feature-item" key={item}><span><Icon name="check" size={16} /></span>{item}</div>)}
             </div>
-          ))}
+          </div>
+          <div className="architecture-card">
+            <div className="architecture-head"><span>ENGINEERING STACK</span><Icon name="network" size={18} /></div>
+            <div className="architecture-flow">
+              {['Part & process', 'Mechanical design', 'Pneumatics / hydraulics', 'PLC / HMI & safety', 'Vision / testing', 'Production-ready machine'].map((item, index) => <div className="arch-node" key={item}><span>0{index + 1}</span>{item}</div>)}
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <section className="section section-light">
+        <div className="container">
+          <SectionIntro eyebrow="INDUSTRIES" title="Built for manufacturing environments where repeatability matters." text="Our current capabilities are a strong fit for automotive, aerospace & defence, electronics, medical devices and precision/general engineering." />
+          <div className="industry-grid home-industry-grid">
+            {industryCards.slice(0, 5).map((item) => <IndustryCard key={item.title} item={item} compact />)}
+          </div>
+          <div className="center-row"><button className="btn btn-secondary" onClick={() => navigate('/industries')}>Explore industries <Icon name="arrow" size={17} /></button></div>
+        </div>
+      </section>
+
+      <section className="section showcase-section">
+        <div className="container">
+          <div className="showcase-card">
+            <div className="showcase-copy">
+              <div className="eyebrow">FEATURED CASE STUDY</div>
+              <h2>Hical Technologies</h2>
+              <p>Aiyantras recently completed an automation project for Hical Technologies in Bangalore. The project gives us a real manufacturing reference to build on as we support more production teams with custom machine engineering.</p>
+              <div className="mini-proof"><span><Icon name="check" size={15} /> Completed project</span><span><Icon name="factory" size={15} /> Bangalore</span><span><Icon name="gear" size={15} /> Custom automation</span></div>
+              <button className="btn btn-primary" onClick={() => navigate('/case-studies/hical-technologies')}>Read the case study <Icon name="arrow" size={17} /></button>
+            </div>
+            <div className="case-visual"><div className="visual-grid-lines" /><div className="machine-stack"><div className="machine-tower" /><div className="machine-bed" /><div className="machine-panel"><span /><span /><span /><span /></div><div className="machine-arm" /></div><div className="visual-badge">PROJECT<br /><strong>HICAL</strong></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section section-light">
+        <div className="container">
+          <SectionIntro eyebrow="ENGINEERING PROCESS" title="A structured path from requirement to commissioning." text="The customer always sees the engineering path, review points and handover expectations before the build starts." />
+          <ol className="process-flow">
+            {processSteps.map(({ num, title, body, output }) => (
+              <li className="process-step" key={num}>
+                <div className="process-node"><span>{num}</span></div>
+                <article className="process-card">
+                  <span className="process-num">STAGE {num}</span>
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                  <div className="process-output"><span>KEY ALIGNMENT</span><strong>{output}</strong></div>
+                </article>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <CTASection />
+    </>
   );
-};
+}
 
-const Industries: React.FC = () => {
-  const industries = [
-    {
-      name: "Automative and Auto Components",
-      desc: "SPMs for machining, assembly and testing of automotive parts and sub-assemblies.",
-    },
-    {
-      name: "Packing & Packaging Machinery",
-      desc: "Custom machines for packaging lines, including filling, sealing, labeling and inspection.",
-    },
-    {
-      name: "Electronic components & Semiconductors Manufactures",
-      desc: "Precision assembly and testing of PCBs, connectors and semiconductor devices.",
-    },
-    {
-      name: "Energy & Utilities",
-      desc: "Components and assemblies for conventional and renewable energy equipment.",
-    },
-
-    {
-      name: "Life Sciences",
-      desc: "Automation for medical devices and disposable components with strict quality and cleanliness needs.",
-    },
-    {
-      name: "Engineering & Industrial",
-      desc: "General engineering parts, valves, pumps and custom mechanisms.",
-    },
-    {
-      name: "Consumer Packaged Goods",
-      desc: "High-speed assembly, labeling and inspection for consumer products.",
-    },
-    {
-      name: "Pharmaceuticals",
-      desc: "Automated assembly and inspection of pharmaceutical packaging and delivery systems.",
-    },
-    {
-      name: "General Manufacturing",
-      desc: "Versatile SPMs for a wide range of manufacturing applications and processes.",
-    },
-  ];
-
+function SolutionsPage() {
   return (
-    <section id="industries" className="section">
-      <div className="container">
-        <h2 className="section-title">Industries we serve</h2>
-        <p className="section-lead">
-          Our approach is industry-agnostic: we focus on your process,
-          tolerances and throughput. We particularly serve segments where
-          repeatability and traceability are non-negotiable.
-        </p>
-        <div className="grid-3">
-          {industries.map((ind) => (
-            <div key={ind.name} className="card card-industry">
-              <h3 className="card-title">{ind.name}</h3>
-              <p className="card-body">{ind.desc}</p>
-            </div>
-          ))}
+    <>
+      <PageHero eyebrow="SOLUTIONS" title="Custom automation, matched to the process." text="Explore the machine types and automation modules Aiyantras can engineer, integrate and commission for manufacturing teams." />
+      <section className="section section-light">
+        <div className="container detail-grid">
+          {solutionCards.map((item) => <article className="detail-card" id={item.link.split('#')[1]} key={item.title}><div className="icon-box large"><Icon name={item.icon} size={28} /></div><span className="card-eyebrow">{item.eyebrow}</span><h2>{item.title}</h2><p>{item.body}</p><ul className="check-list">{solutionPoints(item.title).map((point) => <li key={point}><Icon name="check" size={16} />{point}</li>)}</ul><button className="text-link" onClick={() => navigate('/automation-assessment')}>Discuss this application <Icon name="arrow" size={16} /></button></article>)}
         </div>
-      </div>
-    </section>
+      </section>
+      <section className="section dark-section">
+        <div className="container split-grid">
+          <div><SectionIntro eyebrow="CAPABILITIES" title="One engineering partner across the machine stack." text="Mechanical design, controls, pneumatics/hydraulics, robotics, vision, testing and documentation are connected inside one project workflow." light /></div>
+          <CapabilityList />
+        </div>
+      </section>
+      <CTASection />
+    </>
   );
-};
+}
 
-const Capabilities: React.FC = () => {
-  const caps = [
-    {
-      title: "Mechanical Design",
-      body: "Concept design, 3D modeling, detailed engineering and design for manufacturability of special purpose machines.",
-    },
-    {
-      title: "Assembly Line",
-      body: "Fixturing, part handling, transfer mechanisms and assembly modules tailored to your component geometry.",
-    },
-    {
-      title: "Pressing machine(Pneumatic, hydraulic, servo)",
-      body: "Custom press solutions with precise force control, cushioning and safety features for assembly and forming operations.",
-    },
-    {
-      title: "Testing machine(Leak testing, current continuity testing )",
-      body: "End-of-line testing systems for functional verification, leak testing and quality assurance of assemblies.",
-    },
-    {
-      title: "Conveyor and Palletization",
-      body: "Design and integration of conveyors, palletizers and material flow systems for efficient part handling.",
-    },
-    {
-      title: "Material handling(pick & place)",
-      body: "Robotic and automated material handling solutions including pick & place, conveyors and feeders.",
-    },
-    {
-      title: "Drilling and tapping machine",
-      body: "High-precision drilling and tapping SPMs with multi-spindle heads and programmable feed units for high-volume production.",
-    },
-
-    {
-      title: "Marking machine (dot pin & laser)",
-      body: "Custom marking solutions using dot pin or laser technology for traceability and identification of components.",
-    },
-
-    {
-      title: "Thread checking machine",
-      body: "Automated thread checking systems for quality assurance of threaded components, ensuring compliance with specifications.",
-    },
-    {
-      title: "Dispensing machine",
-      body: "Precision dispensing systems for adhesives, sealants and lubricants in assembly processes.",
-    },
-
-    {
-      title: "Tightening machine",
-      body: "Automated fastening solutions including torque-controlled tightening for assembly applications.",
-    },
-
-    {
-      title: "Vision integrated system",
-      body: "Vision-based inspection and quality control systems integrated into SPMs for dimensional checks and defect detection.",
-    },
-    {
-      title: "Jig and fixtures",
-      body: "Custom jigs and fixtures for secure part holding, alignment and repeatability in machining and assembly operations.",
-    },
-  ];
-
+function IndustriesPage() {
   return (
-    <section id="capabilities" className="section section-muted">
-      <div className="container">
-        <h2 className="section-title">Technical capabilities</h2>
-        <p className="section-lead">
-          A multi-disciplinary engineering team ensures your SPM is not just
-          mechanically sound, but also robust in controls, safety and data.
-        </p>
-        <div className="grid-3">
-          {caps.map((cap) => (
-            <div key={cap.title} className="card">
-              <h3 className="card-title">{cap.title}</h3>
-              <p className="card-body">{cap.body}</p>
-            </div>
-          ))}
+    <>
+      <PageHero eyebrow="INDUSTRIES" title="Automation for demanding manufacturing environments." text="Our capabilities are designed for plants where repeatability, throughput, quality and controlled processes matter." />
+      <section className="section section-light">
+        <div className="container industry-detail-grid">
+          {industryCards.map((item) => <IndustryFeature key={item.title} item={item} />)}
         </div>
-      </div>
-    </section>
+      </section>
+      <section className="section soft-section">
+        <div className="container split-grid">
+          <div><SectionIntro eyebrow="USE CASES" title="Common automation opportunities we evaluate." text="The first conversation is about the process, not the machine brand." /></div>
+          <div className="opportunity-list">{['Manual repetitive assembly', 'Long cycle-time operations', 'Operator-dependent quality checks', 'Press / fastening processes', 'Leak or functional testing', 'Part identification & traceability', 'CNC handling and machine retrofit', 'Vision inspection & poka-yoke'].map((item, index) => <div className="opportunity" key={item}><span>{String(index + 1).padStart(2, '0')}</span><strong>{item}</strong><Icon name="arrow" size={16} /></div>)}</div>
+        </div>
+      </section>
+      <CTASection />
+    </>
   );
-};
+}
 
-const Process: React.FC = () => {
-  const steps = [
-    {
-      title: "1. Requirement study and understanding your part & process",
-      body: "We start with your part drawings, current process, quality issues and production targets to define clear requirements.",
-    },
-    {
-      title: "2. Concept design & Feasibility",
-      body: "Initial concepts are developed, evaluated and refined with your feedback to arrive at the optimal solution.",
-    },
-    {
-      title: "3. Detailed 3D design & engineering",
-      body: "Mechanical, electrical, pneumatic and software engineering are carried out with regular design reviews and approvals.",
-    },
-    {
-      title: "4. Manufacturing & assembly",
-      body: "Parts are manufactured, outsourced items are sourced, and the machine is assembled and wired in our workshop.",
-    },
-    {
-      title: "5. Testing & Validation",
-      body: "Dry runs, capability studies and production trials are done to validate performance and reliability before dispatch.",
-    },
-    {
-      title: "6. Installation & lifecycle support",
-      body: "We install and commission at your site, train operators and provide ongoing support, upgrades and retrofits.",
-    },
-    {
-      title: "7. Machine handover & documentation",
-      body: "Comprehensive documentation including operation manuals, maintenance guides and as-built drawings are provided at handover.",
-    },
-  ];
-
+function HicalCaseStudy() {
   return (
-    <section id="process" className="section">
-      <div className="container">
-        <h2 className="section-title">How we work</h2>
-        <p className="section-lead">
-          A structured, transparent process from concept to commissioning
-          ensures that your machine performs as promised on the shop floor.
-        </p>
-        <div className="timeline">
-          {steps.map((step) => (
-            <div key={step.title} className="timeline-item">
-              <div className="timeline-dot" />
-              <div className="timeline-content">
-                <h3 className="timeline-title">{step.title}</h3>
-                <p className="timeline-body">{step.body}</p>
-              </div>
-            </div>
-          ))}
+    <>
+      <PageHero eyebrow="CASE STUDY" title="Hical Technologies — a completed Bangalore automation project." text="Aiyantras has completed its first automation project for Hical Technologies. This reference is now the foundation for our next customer conversations." />
+      <section className="section section-light">
+        <div className="container case-study-layout">
+          <div className="case-study-main">
+            <div className="case-study-visual large-visual"><div className="visual-grid-lines" /><div className="machine-stack scale-up"><div className="machine-tower" /><div className="machine-bed" /><div className="machine-panel"><span /><span /><span /><span /></div><div className="machine-arm" /></div><div className="visual-badge">COMPLETED<br /><strong>PROJECT</strong></div></div>
+            <div className="case-summary"><span>Customer</span><strong>Hical Technologies</strong><span>Location</span><strong>Bangalore</strong><span>Type</span><strong>Custom automation</strong></div>
+            <div className="story-block"><span className="card-eyebrow">WHY THIS MATTERS</span><h2>Turn one successful machine into a repeatable customer proof point.</h2><p>The current site should tell the Hical story with real approved photos, the original manufacturing challenge, the engineered solution and verified project results. This page is intentionally structured so those details can be dropped in without rewriting the design.</p></div>
+          </div>
+          <aside className="case-aside"><div className="aside-card"><span className="card-eyebrow">PROJECT SNAPSHOT</span><h3>What to publish here</h3><ul className="check-list"><li><Icon name="check" size={16} /> Customer-approved project photographs</li><li><Icon name="check" size={16} /> Process challenge and constraints</li><li><Icon name="check" size={16} /> Machine architecture / station flow</li><li><Icon name="check" size={16} /> Verified cycle-time or quality improvements</li><li><Icon name="check" size={16} /> Controls, safety and validation details</li></ul><button className="btn btn-primary btn-full" onClick={() => navigate('/automation-assessment')}>Discuss a similar project <Icon name="arrow" size={17} /></button></div></aside>
         </div>
-      </div>
-    </section>
+      </section>
+      <CTASection />
+    </>
   );
-};
+}
 
-const CaseStudies: React.FC = () => {
-  const cases = [
-    {
-      title: "Multi-station SPM for automotive housing",
-      result:
-        "Reduced cycle time by over 30% by combining drilling, tapping and chamfering operations into a single fixture with automatic indexing.",
-    },
-    {
-      title: "Lean assembly cell for electromechanical device",
-      result:
-        "Improved first-time-right quality to 99% using guided assembly, torque monitoring and in-process checks.",
-    },
-    {
-      title: "Vision inspection system for precision components",
-      result:
-        "Eliminated manual gauging and reduced inspection time per part while improving traceability of defects.",
-    },
-  ];
-
+function EngineeringPage() {
   return (
-    <section id="cases" className="section section-muted">
-      <div className="container">
-        <h2 className="section-title">Representative projects</h2>
-        <p className="section-lead">
-          Here are sample problem statements and outcomes that represent the
-          kind of work AiYantras is built to deliver.
-        </p>
-        <div className="grid-3">
-          {cases.map((cs) => (
-            <div key={cs.title} className="card">
-              <h3 className="card-title">{cs.title}</h3>
-              <p className="card-body">{cs.result}</p>
-            </div>
-          ))}
+    <>
+      <PageHero eyebrow="ENGINEERING" title="Mechanical design meets controls, automation and production reality." text="Aiyantras combines machine design, precision tooling knowledge and industrial automation into a single engineering workflow." />
+      <section className="section section-light">
+        <div className="container">
+          <SectionIntro eyebrow="CORE CAPABILITIES" title="The disciplines behind the machine." text="The current website already covers a broad technical stack. This page groups it into the way a plant engineering team actually evaluates a machine builder." />
+          <CapabilityList light />
+          <div className="engineering-table-wrap"><table className="engineering-table"><thead><tr><th>Capability</th><th>What it covers</th></tr></thead><tbody>{capabilityRows.map(([a, b]) => <tr key={a}><td>{a}</td><td>{b}</td></tr>)}</tbody></table></div>
         </div>
-      </div>
-    </section>
+      </section>
+      <section className="section dark-section">
+        <div className="container">
+          <SectionIntro eyebrow="PROCESS" title="Clear review points before the machine reaches your floor." text="Requirement study → concept → detailed engineering → manufacturing & assembly → testing → installation & support → documentation." light />
+          <div className="process-rail">{processSteps.map(([num, title, body]) => <div className="rail-step" key={num}><span>{num}</span><h3>{title}</h3><p>{body}</p></div>)}</div>
+        </div>
+      </section>
+      <CTASection />
+    </>
   );
-};
+}
 
-const WhyChooseUs: React.FC = () => {
+function AssessmentPage() {
   return (
-    <section id="why" className="section section-muted">
-      <div className="container two-column">
-        <div>
-          <h2 className="section-title">Why Choose Us</h2>
-          <p className="section-lead">
-            Solutions founded on engineering rigour, practical experience and
-            customer focus.
-          </p>
-          <ul className="pill-list">
-            <li>Custom-built solutions</li>
-            <li>Strong engineering expertise</li>
-            <li>Competitive pricing</li>
-            <li>Transparent project execution</li>
-            <li>Reliable after-sales support</li>
-          </ul>
+    <>
+      <PageHero eyebrow="AUTOMATION ASSESSMENT" title="Have a manual or bottlenecked process? Let's assess it." text="Share your production problem, component, drawing or process details. The first step is understanding whether automation is technically and commercially sensible." />
+      <section className="section section-light">
+        <div className="container assessment-grid">
+          <div>
+            <div className="assessment-callout"><div className="icon-box large"><Icon name="target" size={28} /></div><h2>What we evaluate</h2><div className="assessment-points">{['Cycle time & throughput', 'Operator dependency', 'Quality / rejection points', 'Part handling & ergonomics', 'Testing / inspection opportunities', 'Automation level & machine concept'].map((item) => <div key={item}><Icon name="check" size={16} />{item}</div>)}</div></div>
+            <div className="assessment-note"><Icon name="document" size={19} /><div><strong>Useful inputs</strong><p>Part drawing, process video, current cycle time, daily volume, number of operators and the outcome you want to improve.</p></div></div>
+          </div>
+          <LeadForm />
         </div>
-        <div className="card">
-          <h3 className="card-title">Strong industrial experience</h3>
-          <p className="card-body">
-            Our founders bring extensive hands-on experience from leading
-            industries, having worked with SPM (Special Purpose Machine)
-            manufacturers in small-scale industries as well as globally
-            recognized MNCs such as TITAN and Schneider Electric. This unique
-            blend of exposure ensures deep technical understanding and the
-            ability to deliver high-quality, practical solutions.
-          </p>
-        </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
-};
+}
 
-const Contact: React.FC = () => {
+function ContactPage() {
   return (
-    <section id="contact" className="section">
-      <div className="container two-column">
-        <div>
-          <h2 className="section-title">
-            Let&apos;s discuss your next machine
-          </h2>
-          <p className="section-lead">
-            Share your component drawings, current process and production
-            targets, and we&apos;ll propose a practical SPM or automation
-            concept.
-          </p>
-          <ul className="contact-list">
-            <li>
-              <strong>Email:</strong>{" "}
-              <a href="mailto:info@aiyantras.com" style={{ color: "#38bdf8" }}>
-                info@aiyantras.com
-              </a>
-            </li>
-            <li>
-              <strong>Phone:</strong> +91-9036929191
-            </li>
-            <br />
-            <li>
-              <strong>Location:</strong> No. 19/179 Annapoorneswari layout 3rd
-              cross,
-              <br />
-              Konanakunte, New bank colony, Anjanapura main road,
-              <br />
-              Bangalore:560062 India.
-            </li>
-          </ul>
-          <p className="section-body">
-            We work with OEMs, tier suppliers and job shops. Even if you only
-            have a rough idea or a manual process today, we can help you define
-            the right level of automation.
-          </p>
+    <>
+      <PageHero eyebrow="CONTACT" title="Let's discuss your next machine or automation project." text="Tell us what you're manufacturing, where the bottleneck is and what you need the process to achieve." />
+      <section className="section section-light">
+        <div className="container contact-grid">
+          <div className="contact-panel">
+            <span className="card-eyebrow">AIYANTRAS AUTOMATION</span>
+            <h2>Bangalore engineering support for custom automation.</h2>
+            <div className="contact-item"><span className="contact-icon"><Icon name="document" size={18} /></span><div><small>Email</small><a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></div></div>
+            <div className="contact-item"><span className="contact-icon"><Icon name="truck" size={18} /></span><div><small>Phone</small><a href={`tel:${COMPANY.phone.replace(/\s/g, '')}`}>{COMPANY.phone}</a></div></div>
+            <div className="contact-item"><span className="contact-icon"><Icon name="factory" size={18} /></span><div><small>Location</small><strong>{COMPANY.location}</strong></div></div>
+            <div className="contact-callout"><strong>Best starting point:</strong><span>Send a drawing, process video or a short description of the bottleneck.</span></div>
+          </div>
+          <LeadForm />
         </div>
-        <div className="card contact-card">
-          <h3 className="card-title">Quick contact form</h3>
-          <form
-            className="contact-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const form = e.currentTarget as HTMLFormElement;
-              const name =
-                (
-                  form.querySelector(
-                    'input[placeholder="Your name"]'
-                  ) as HTMLInputElement
-                )?.value.trim() || "";
-              const company =
-                (
-                  form.querySelector(
-                    'input[placeholder="Company name"]'
-                  ) as HTMLInputElement
-                )?.value.trim() || "";
-              const email =
-                (
-                  form.querySelector(
-                    'input[placeholder="you@company.com"]'
-                  ) as HTMLInputElement
-                )?.value.trim() || "";
-              const requirement =
-                (
-                  form.querySelector(
-                    'textarea[placeholder^="Briefly describe"]'
-                  ) as HTMLTextAreaElement
-                )?.value.trim() || "";
-
-              const subject = encodeURIComponent(
-                `Enquiry from ${name || company || email}`
-              );
-              const body = encodeURIComponent(
-                `Name: ${name}\nCompany: ${company}\nEmail: ${email}\n\nRequirement:\n${requirement}`
-              );
-
-              const mailto = `mailto:info@aiyantras.com?subject=${subject}&body=${body}`;
-
-              // Open user's email client with composed message
-              window.location.href = mailto;
-
-              // Optionally reset the form after triggering mail client
-              form.reset();
-            }}>
-            <div className="form-row">
-              <label>
-                Name
-                <input type="text" placeholder="Your name" required />
-              </label>
-            </div>
-            <div className="form-row">
-              <label>
-                Company
-                <input type="text" placeholder="Company name" />
-              </label>
-            </div>
-            <div className="form-row">
-              <label>
-                Email
-                <input type="email" placeholder="you@company.com" required />
-              </label>
-            </div>
-            <div className="form-row">
-              <label>
-                Requirement
-                <textarea
-                  rows={4}
-                  placeholder="Briefly describe the part, process and expected volumes."
-                  required
-                />
-              </label>
-            </div>
-            <button type="submit" className="btn btn-primary btn-full">
-              Submit enquiry
-            </button>
-          </form>
-        </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
-};
+}
 
-const Footer: React.FC = () => {
-  return (
-    <footer className="footer">
-      <div className="container footer-inner">
-        <div>
-          <span className="logo-text">
-            AiYantras<span className="logo-dot">Automation</span>
-          </span>
-          <p className="footer-text">
-            Intelligent special purpose machines and automation solutions.
-          </p>
-        </div>
-        <div className="footer-meta">
-          <span>© {new Date().getFullYear()} AiYantras Automation.</span>
-          <span>All rights reserved.</span>
-        </div>
-      </div>
-    </footer>
-  );
-};
+function LeadForm() {
+  const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState({ name: '', company: '', role: '', email: '', phone: '', requirement: '' });
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const subject = encodeURIComponent(`Aiyantras Automation Assessment — ${form.company || form.name}`);
+    const body = encodeURIComponent(`Name: ${form.name}\nCompany: ${form.company}\nRole: ${form.role}\nEmail: ${form.email}\nPhone: ${form.phone}\n\nRequirement:\n${form.requirement}`);
+    window.location.href = `mailto:${COMPANY.email}?subject=${subject}&body=${body}`;
+    setSubmitted(true);
+  };
+  if (submitted) return <div className="success-card"><div className="success-icon"><Icon name="check" size={28} /></div><h2>Thank you.</h2><p>Your email client has been prepared with the project details. Send the message and the Aiyantras team can take it forward.</p><button className="btn btn-secondary" onClick={() => setSubmitted(false)}>Send another enquiry</button></div>;
+  return <form className="lead-form" onSubmit={onSubmit}><div className="form-head"><span className="card-eyebrow">START A CONVERSATION</span><h2>Tell us about the process.</h2><p>Share the essentials. We will take the conversation from there.</p></div><div className="form-grid"><label>Name<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Your name" /></label><label>Company<input required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="Company name" /></label><label>Role<input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Plant / Engineering / Procurement" /></label><label>Email<input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@company.com" /></label><label>Phone<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91" /></label><label className="full">Requirement<textarea required value={form.requirement} onChange={(e) => setForm({ ...form, requirement: e.target.value })} rows={6} placeholder="Describe the part, process, volume or bottleneck..." /></label></div><button className="btn btn-primary btn-full" type="submit">Prepare enquiry email <Icon name="arrow" size={17} /></button><small className="form-foot">Or email us directly at <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</small></form>;
+}
+
+function MachineVisual() {
+  return <div className="hero-visual"><div className="visual-grid-lines" /><div className="visual-copy"><span>SPM / AUTOMATION CELL</span><strong>ENGINEERED<br />FOR THE PROCESS</strong></div><div className="machine-stack hero-machine"><div className="machine-tower" /><div className="machine-bed" /><div className="machine-panel"><span /><span /><span /><span /></div><div className="machine-arm" /><div className="machine-part"><i /><i /><i /></div></div><div className="visual-chip chip-a">CYCLE TIME</div><div className="visual-chip chip-b">P L C · H M I</div><div className="visual-chip chip-c">QUALITY</div></div>;
+}
+
+function SectionIntro({ eyebrow, title, text, light = false }: { eyebrow: string; title: string; text: string; light?: boolean }) {
+  return <div className={`section-intro ${light ? 'light' : ''}`}><span className="card-eyebrow">{eyebrow}</span><h2>{title}</h2><p>{text}</p></div>;
+}
+
+function PageHero({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
+  return <section className="page-hero section-grid-bg"><div className="container narrow"><span className="eyebrow"><span className="eyebrow-line" /> {eyebrow}</span><h1>{title}</h1><p>{text}</p></div></section>;
+}
+
+function IndustryCard({ item, compact = false }: { item: (typeof industryCards)[number]; compact?: boolean }) {
+  return <article className={`industry-card accent-${item.accent} ${compact ? 'compact' : ''}`}><div className="industry-icon"><Icon name={item.icon} size={23} /></div><div><h3>{item.title}</h3><p>{item.body}</p></div><button onClick={() => navigate(`/industries#${item.slug}`)} className="icon-arrow"><Icon name="arrow" size={17} /></button></article>;
+}
+
+function IndustryFeature({ item }: { item: (typeof industryCards)[number] }) {
+  return <article className={`industry-feature accent-${item.accent}`} id={item.slug}><div className="industry-feature-visual"><div className="visual-orbit orbit-1" /><div className="visual-orbit orbit-2" /><div className="visual-orbit orbit-3" /><Icon name={item.icon} size={44} /></div><div className="industry-feature-copy"><span className="card-eyebrow">INDUSTRY</span><h2>{item.title}</h2><p>{item.body}</p><div className="usecase-pills">{industryUseCases(item.slug).map((x) => <span key={x}>{x}</span>)}</div><button onClick={() => navigate('/automation-assessment')} className="text-link">Discuss an application <Icon name="arrow" size={16} /></button></div></article>;
+}
+
+function CapabilityList({ light = false }: { light?: boolean }) {
+  return <div className={`capability-list ${light ? 'capability-list-light' : ''}`}>{capabilityRows.map(([title, body], index) => <div className="capability-item" key={title}><span>0{index + 1}</span><div><strong>{title}</strong><p>{body}</p></div></div>)}</div>;
+}
+
+function CTASection() {
+  return <section className="cta-section"><div className="container"><div className="cta-card"><div><span className="card-eyebrow">READY TO EXPLORE A PROCESS?</span><h2>Bring us the bottleneck. We'll bring the machine thinking.</h2><p>Share a drawing, process video or a short description of the production challenge.</p></div><button onClick={() => navigate('/automation-assessment')} className="btn btn-primary btn-lg">Request automation assessment <Icon name="arrow" size={18} /></button></div></div></section>;
+}
+
+function solutionPoints(title: string) {
+  const map: Record<string, string[]> = {
+    'Special Purpose Machines': ['Dedicated drilling, tapping, reaming and chamfering stations', 'Multi-spindle heads and programmable feed units', 'High repeatability for high-volume components', 'Part-specific fixtures and poka-yoke'],
+    'Assembly Automation': ['Press-fit, fastening, dispensing and torquing operations', 'Automatic transfer, indexing and operator guidance', 'Error-proofing and traceability built in', 'Flexible cells for evolving product families'],
+    'Testing & Inspection': ['Functional and end-of-line testing', 'Vision-based presence and defect inspection', 'Leak / continuity testing applications', 'Data logging and digital test results'],
+    'CNC Automation & Retrofit': ['Legacy PLC / HMI control upgrades', 'Cycle-time and ergonomics improvements', 'Sensors, SCADA and machine dashboards', 'Automatic part loading and unloading'],
+    'Robotics & Material Handling': ['Robot selection and payload/reach optimisation', 'EOAT and custom gripper development', 'Conveyors, feeders and transfer systems', 'Machine safety and cell integration'],
+    'Jigs, Fixtures & Tooling': ['Part location and repeatability', 'Error-proofing / poka-yoke', 'Assembly and machining fixtures', 'Operator-friendly access and maintenance'],
+  };
+  return map[title] || [];
+}
+
+function industryUseCases(slug: string) {
+  const map: Record<string, string[]> = {
+    automotive: ['Pressing', 'Assembly', 'Inspection', 'Testing'],
+    'aerospace-defence': ['Precision assembly', 'Fixtures', 'Inspection', 'Traceability'],
+    electronics: ['Fastening', 'Dispensing', 'Functional testing', 'Vision'],
+    'medical-devices': ['Precision assembly', 'Inspection', 'Testing', 'Traceability'],
+    'general-engineering': ['CNC support', 'Assembly', 'Handling', 'Retrofitting'],
+  };
+  return map[slug] || [];
+}
+
+function Footer() {
+  return <footer className="footer"><div className="container footer-grid"><div><div className="brand footer-brand"><img src="/logo.png" alt="Aiyantras" className="brand-logo" /><span className="brand-copy"><strong>AIYANTRAS</strong><span>AUTOMATION</span></span></div><p className="footer-note">Custom SPMs and industrial automation for production-critical processes.</p></div><div className="footer-links"><div><span>EXPLORE</span><button onClick={() => navigate('/solutions')}>Solutions</button><button onClick={() => navigate('/industries')}>Industries</button><button onClick={() => navigate('/case-studies/hical-technologies')}>Case study</button></div><div><span>START</span><button onClick={() => navigate('/automation-assessment')}>Automation assessment</button><a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a><a href={`tel:${COMPANY.phone.replace(/\s/g, '')}`}>{COMPANY.phone}</a></div></div></div><div className="container footer-bottom"><span>© {new Date().getFullYear()} Aiyantras Automation. All rights reserved.</span><span>Bangalore · Karnataka · India</span></div></footer>;
+}
 
 export default App;
