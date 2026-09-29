@@ -926,7 +926,7 @@ function Home() {
 
               <a
                 href="/case-studies/hical-technologies"
-                className="btn btn-primary"
+                className="btn btn-case-study"
               >
                 Read the case study <Icon name="arrow" size={17} />
               </a>
