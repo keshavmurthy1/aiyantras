@@ -1416,6 +1416,8 @@ function ContactPage() {
 
 function LeadForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const [form, setForm] = useState({
     name: '',
@@ -1426,22 +1428,33 @@ function LeadForm() {
     requirement: '',
   });
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSubmitting(true);
+    setError('');
 
-    const subject = encodeURIComponent(
-      `Aiyantras Automation Assessment — ${
-        form.company || form.name
-      }`
-    );
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const result = await response.json() as { error?: string };
 
-    const body = encodeURIComponent(
-      `Name: ${form.name}\nCompany: ${form.company}\nRole: ${form.role}\nEmail: ${form.email}\nPhone: ${form.phone}\n\nRequirement:\n${form.requirement}`
-    );
+      if (!response.ok) {
+        throw new Error(result.error || 'We could not send your enquiry. Please try again.');
+      }
 
-    window.location.href = `mailto:${COMPANY.email}?subject=${subject}&body=${body}`;
-
-    setSubmitted(true);
+      setSubmitted(true);
+    } catch (submissionError) {
+      setError(
+        submissionError instanceof Error
+          ? submissionError.message
+          : 'We could not send your enquiry. Please try again.'
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -1454,8 +1467,8 @@ function LeadForm() {
         <h2>Thank you.</h2>
 
         <p>
-          Your email client has been prepared with the project details. Send
-          the message and the Aiyantras team can take it forward.
+          Your enquiry has been sent to the Aiyantras team. We will be in touch
+          soon.
         </p>
 
         <button
@@ -1557,9 +1570,17 @@ function LeadForm() {
         </label>
       </div>
 
-      <button className="btn btn-primary btn-full" type="submit">
-        Prepare enquiry email <Icon name="arrow" size={17} />
+      <button className="btn btn-primary btn-full" type="submit" disabled={submitting}>
+        {submitting ? 'Sending enquiry...' : 'Send enquiry'}{' '}
+        {!submitting && <Icon name="arrow" size={17} />}
       </button>
+
+      {error && (
+        <p className="form-error" role="alert">
+          {error} You can also email us at{' '}
+          <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.
+        </p>
+      )}
 
       <small className="form-foot">
         Or email us directly at{' '}
