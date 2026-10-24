@@ -121,6 +121,15 @@ export default async function handler(request: ContactRequest, response: Contact
       return response.status(502).json({ error: 'We could not send your enquiry. Please try again or email us directly.' });
     }
 
+    let emailId: string | undefined;
+    try {
+      const details = await result.json() as { id?: unknown };
+      if (typeof details.id === 'string') emailId = details.id;
+    } catch {
+      emailId = undefined;
+    }
+    console.info('Resend accepted contact enquiry', emailId ? { emailId } : {});
+
     return response.status(200).json({ ok: true });
   } catch (error) {
     console.error('Contact email request failed', error instanceof Error ? error.message : 'Unknown network error.');

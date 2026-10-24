@@ -1439,10 +1439,23 @@ function LeadForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      const result = await response.json() as { error?: string };
+      const responseBody = await response.text();
+      let result: { error?: string; ok?: boolean } = {};
+
+      if (responseBody) {
+        try {
+          result = JSON.parse(responseBody) as { error?: string; ok?: boolean };
+        } catch {
+          result = {};
+        }
+      }
 
       if (!response.ok) {
         throw new Error(result.error || 'We could not send your enquiry. Please try again.');
+      }
+
+      if (result.ok !== true) {
+        throw new Error('The enquiry service did not confirm delivery. Please try again or email us directly.');
       }
 
       setSubmitted(true);
